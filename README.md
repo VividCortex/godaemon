@@ -4,7 +4,7 @@ godaemon
 Daemonize Go applications with `exec()` instead of `fork()`.
 
 You can't daemonize the usual way in Go. Daemonizing is a Unix concept that requires
-some [specific things](http://en.wikipedia.org/wiki/Daemon_(computing)#Creation) you can't do
+some [specific things](http://goo.gl/vTUsVy) you can't do
 easily in Go. But you can still accomplish the same goals 
 if you don't mind that your program will start copies of itself
 several times, as opposed to using `fork()` the way many programmers are accustomed to doing.
