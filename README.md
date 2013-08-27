@@ -9,11 +9,46 @@ easily in Go. But you can still accomplish the same goals
 if you don't mind that your program will start copies of itself
 several times, as opposed to using `fork()` the way many programmers are accustomed to doing.
 
-A Go Daemon is a good thing, and so we present an angelic cat picture:
+## Getting Started
 
-![Angelic Cat](http://f.cl.ly/items/2b0y0n3W2W1H0S1K3g0g/angelic-cat.jpg)
+View the [package documentation](http://godoc.org/github.com/VividCortex/godaemon)
+for details about how it works. Briefly, to make your program into a daemon,
+do the following as soon as possible in your `main()` function:
 
-### History
+```go
+import (
+	"github.com/VividCortex/godaemon"
+)
+
+func main() {
+	godaemon.Daemonize(true)
+}
+```
+
+
+## Contribute
+
+Contributions are welcome. Please open pull requests or issue reports!
+
+
+## License
+
+This repository is Copyright (c) 2013 VividCortex, Inc. All rights reserved.
+It is licensed under the MIT license. Please see the LICENSE file for applicable
+license terms.
+
+## Authors
+
+The primary author is [Gustavo Kristic](https://github.com/gkristic), with some
+documentation and other minor contributions by others at VividCortex.
+
+## History
 
 An earlier version of this concept with a slightly different interface was
 developed internally at VividCortex.
+
+## Cats
+
+A Go Daemon is a good thing, and so we present an angelic cat picture:
+
+![Angelic Cat](http://f.cl.ly/items/2b0y0n3W2W1H0S1K3g0g/angelic-cat.jpg)
