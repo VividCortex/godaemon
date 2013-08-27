@@ -10,11 +10,11 @@ if you don't mind that your program will start copies of itself
 several times, as opposed to using `fork()` the way many programmers are accustomed to doing.
 
 It is somewhat controversial whether it's even a good idea to make programs daemonize themselves,
-or how to do it correctly (and whether it's even possible to do correctly).
+or how to do it correctly (and whether it's even possible to do correctly in Go).
 Read [here](https://code.google.com/p/go/issues/detail?id=227),
 [here](http://www.ryanday.net/2012/09/04/the-problem-with-a-golang-daemon/),
 and [here](http://stackoverflow.com/questions/14537045/how-i-should-run-my-golang-process-in-background)
-for more on this topic. However, at VividCortex we do need to run one of our processes as a
+for more on this topic. However, at [VividCortex](https://vividcortex.com/) we do need to run one of our processes as a
 daemon with the usual attributes of a daemon, and we chose the approach implemented in this package.
 
 Because of the factors mentioned in the first link just given, you should take great care when
