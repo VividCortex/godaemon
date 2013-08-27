@@ -1,7 +1,7 @@
 godaemon
 ========
 
-Daemonize Go applications with `exec()` instead of `fork()`.
+Daemonize Go applications with `exec()` instead of `fork()`. Read our [blog post](https://vividcortex.com/blog/2013/08/27/godaemon-a-library-to-daemonize-go-apps/) on the subject.
 
 You can't daemonize the usual way in Go. Daemonizing is a Unix concept that requires
 some [specific things](http://goo.gl/vTUsVy) you can't do
