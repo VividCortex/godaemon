@@ -3,10 +3,13 @@ godaemon
 
 Daemonize Go applications with `exec()` instead of `fork()`.
 
-You can't daemonize in Go. Daemonizing is a Unix concept that requires
-some specific things you can't do in Go. But you can simulate it pretty
-accurately, if you don't mind that your program will start copies of itself
-several times. Thus, a Go Daemon isn't truly deamonic, and so we present an angelic cat picture:
+You can't daemonize the usual way in Go. Daemonizing is a Unix concept that requires
+some [specific things](http://en.wikipedia.org/wiki/Daemon_(computing)#Creation) you can't do
+easily in Go. But you can still accomplish the same goals 
+if you don't mind that your program will start copies of itself
+several times, as opposed to using `fork()` the way many programmers are accustomed to doing.
+
+A Go Daemon is a good thing, and so we present an angelic cat picture:
 
 ![Angelic Cat](http://f.cl.ly/items/2b0y0n3W2W1H0S1K3g0g/angelic-cat.jpg)
 
