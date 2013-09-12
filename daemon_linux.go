@@ -76,7 +76,7 @@ func Daemonize(child ...bool) {
 	os.Chdir("/")
 	syscall.Umask(0)
 
-	if len(child) == 0 || !child[0] {
+	if len(child) == 0 || child[0] {
 		resetEnv()
 	}
 }
