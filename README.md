@@ -33,9 +33,15 @@ import (
 )
 
 func main() {
-	godaemon.Daemonize(true)
+	godaemon.MakeDaemon(&godaemon.DaemonAttr{})
 }
 ```
+
+Use the `CaptureOutput` attribute if you need to capture your program's
+standard output and standard error streams. In that case, the function returns
+two valid readers (`io.Reader`) that you can read from the program itself.
+That's particularly useful for functions that write error or diagnosis messages
+right to the error output, which are normally lost in a daemon.
 
 
 ## Contribute
