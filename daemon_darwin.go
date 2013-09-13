@@ -6,3 +6,7 @@ package godaemon
 // Daemonize is a no-op on MacOSX Darwin.
 func Daemonize(child bool) {
 }
+
+// DaemonizeWithCapture is a no-op on MacOSX Darwin.
+func DaemonizeWithCapture(child bool) (io.Reader, io.Reader) {
+}

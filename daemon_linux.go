@@ -8,6 +8,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -18,18 +19,30 @@ import (
 // The name of the env var that indicates what stage of daemonization we're at.
 const stageVar = "__DAEMON_STAGE"
 
+// A DaemonAttr describes the options that apply to daemonization
+type DaemonAttr struct {
+	CaptureOutput bool // whether to capture stdout/stderr
+}
+
 /*
-Daemonize turns the process into a daemon. But given the lack of Go's
-support for fork(), Daemonize() is forced to run the process all over again,
+MakeDaemon turns the process into a daemon. But given the lack of Go's
+support for fork(), MakeDaemon() is forced to run the process all over again,
 from the start. Hence, this should probably be your first call after main
 begins, unless you understand the effects of calling from somewhere else.
 Keep in mind that the PID changes after this function is called, given
 that it only returns in the child; the parent will exit without returning.
 
-The child parameter, which defaults to false, indicates whether children
-should also Daemonize(). If so, then there will be extra "forks". If not,
-then the environment variable stageVar is reserved for the use of this
-package. Otherwise it will be restored to its original value.
+Options are provided as a DaemonAttr structure. In particular, setting the
+CaptureOutput member to true will make the function return two io.Reader
+streams to read the process' standard output and standard error, respectively.
+That's useful if you want to capture things you'd normally loose given the
+lack of console output for a daemon. Some libraries can write error conditions
+to standard error or make use of Go's log package, that defaults to standard
+error too. Having these streams allows you to capture them as required. (Note
+that this function takes no action whatsoever on any of the streams.)
+
+NOTE: If you use them, make sure NOT to take one of these readers and write
+the data back again to standard output/error, or you'll end up with a loop.
 
 Daemonizing is a 3-stage process. In stage 0, the program increments the
 magical environment variable and starts a copy of itself that's a session
@@ -39,23 +52,58 @@ then exits.
 In stage 1, the (new copy of) the program starts another copy that's not
 a session leader, and then exits.
 
-In stage 2, the (new copy of) the program chdir's to /, then sets the umask.
-If child is true, it returns the magical variable to its original value.
+In stage 2, the (new copy of) the program chdir's to /, then sets the umask
+and restablishes the original value for the environment variable.
 */
-func Daemonize(child ...bool) {
+func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader) {
 	stage, advanceStage, resetEnv := getStage()
 
 	if stage == 0 || stage == 1 {
 		procName, err := os.Readlink("/proc/self/exe")
 
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "can't read /proc/self/exe:", err, "\n")
+			fmt.Fprintf(os.Stderr, "can't read /proc/self/exe: ", err, "\n")
 			os.Exit(1)
+		}
+
+		// Descriptors 0, 1 and 2 are fixed in the "os" package. If we close
+		// them, the process may choose to open something else there, with bad
+		// consequences if some write to os.Stdout or os.Stderr follows (even
+		// from Go's library itself, through the default log package). We thus
+		// reserve these descriptors to avoid that.
+		nullDev, err := os.OpenFile("/dev/null", 0, 0)
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unable to open /dev/null: ", err, "\n")
+			os.Exit(1)
+		}
+
+		files := make([]*os.File, 3, 5)
+		files[0] = nullDev // stdin
+		// FDs should not be changed; we're using literals (as opposed to
+		// constants) on purpose to discourage such a practice.
+
+		if stage == 1 && attrs.CaptureOutput {
+			files = files[0:5]
+
+			// stdout: write at fd:1, read at fd:3
+			if files[3], files[1], err = os.Pipe(); err != nil {
+				fmt.Fprintf(os.Stderr, "unable to create stdout pipe: ", err, "\n")
+				os.Exit(1)
+			}
+
+			// stderr: write at fd:2, read at fd:4
+			if files[4], files[2], err = os.Pipe(); err != nil {
+				fmt.Fprintf(os.Stderr, "unable to create stderr pipe: ", err, "\n")
+				os.Exit(1)
+			}
+		} else {
+			files[1], files[2] = nullDev, nullDev
 		}
 
 		advanceStage()
 		dir, _ := os.Getwd()
-		attrs := os.ProcAttr{Dir: dir, Env: os.Environ(), Files: []*os.File{nil, nil, nil}}
+		attrs := os.ProcAttr{Dir: dir, Env: os.Environ(), Files: files}
 
 		if stage == 0 {
 			sysattrs := syscall.SysProcAttr{Setsid: true}
@@ -75,10 +123,24 @@ func Daemonize(child ...bool) {
 
 	os.Chdir("/")
 	syscall.Umask(0)
+	resetEnv()
 
-	if len(child) == 0 || child[0] {
-		resetEnv()
+	var stdout, stderr *os.File
+	if attrs.CaptureOutput {
+		stdout = os.NewFile(uintptr(3), "stdout")
+		stderr = os.NewFile(uintptr(4), "stderr")
 	}
+
+	return stdout, stderr
+}
+
+// Daemonize is equivalent to MakeDaemon(&DaemonAttr{}). It is kept only for
+// backwards API compatibility, but it's usage is otherwise discouraged. Use
+// MakeDaemon() instead. The child parameter, previously used to tell whether
+// to reset the environment or not (see MakeDaemon()), is currently ignored.
+// The environment is reset in all cases.
+func Daemonize(child ...bool) {
+	MakeDaemon(&DaemonAttr{})
 }
 
 // Returns the current stage in the "daemonization process", that's kept in
