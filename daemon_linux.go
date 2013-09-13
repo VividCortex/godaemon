@@ -35,7 +35,7 @@ that it only returns in the child; the parent will exit without returning.
 Options are provided as a DaemonAttr structure. In particular, setting the
 CaptureOutput member to true will make the function return two io.Reader
 streams to read the process' standard output and standard error, respectively.
-That's useful if you want to capture things you'd normally loose given the
+That's useful if you want to capture things you'd normally lose given the
 lack of console output for a daemon. Some libraries can write error conditions
 to standard error or make use of Go's log package, that defaults to standard
 error too. Having these streams allows you to capture them as required. (Note
@@ -53,7 +53,7 @@ In stage 1, the (new copy of) the program starts another copy that's not
 a session leader, and then exits.
 
 In stage 2, the (new copy of) the program chdir's to /, then sets the umask
-and restablishes the original value for the environment variable.
+and reestablishes the original value for the environment variable.
 */
 func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader) {
 	stage, advanceStage, resetEnv := getStage()
