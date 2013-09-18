@@ -1,32 +1,35 @@
+// Package godaemon runs a program as a Unix daemon.
 package godaemon
 
 // Copyright (c) 2013 VividCortex, Inc. All rights reserved.
 // Please see the LICENSE file for applicable license terms.
 
+//#include <mach-o/dyld.h>
+import "C"
+
 import (
-	"io"
-	"os"
+	"fmt"
+	"unsafe"
 )
 
-// A DaemonAttr describes the options that apply to daemonization
-type DaemonAttr struct {
-	CaptureOutput bool // whether to capture stdout/stderr
-}
+func getExecutablePath() (string, error) {
+	PATH_MAX := 1024 // From <sys/syslimits.h>
+	exePath := make([]byte, PATH_MAX)
+	exeLen := C.uint32_t(len(exePath))
 
-// MakeDaemon is a no-op on MacOSX Darwin.
-func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader) {
-	var stdout, stderr *os.File
+	status, err := C._NSGetExecutablePath((*C.char)(unsafe.Pointer(&exePath[0])),
+		&exeLen)
 
-	if attrs.CaptureOutput {
-		stdout = os.NewFile(uintptr(1), "stdout")
-		stderr = os.NewFile(uintptr(2), "stderr")
+	if err != nil {
+		err = fmt.Errorf("_NSGetExecutablePath: %v", err)
+		return "", err
 	}
-	return stdout, stderr
-}
 
-// Daemonize is equivalent to MakeDaemon(&DaemonAttr{}). It is kept only for
-// backwards API compatibility, but its usage is otherwise discouraged. Use
-//
-// Daemonize is a no-op on MacOSX Darwin.
-func Daemonize(child ...bool) {
+	// Not sure why this might happen without err being nil, but...
+	if status != 0 {
+		err = fmt.Errorf("non-zero return from _NSGetExecutablePath")
+		return "", err
+	}
+
+	return string(exePath), nil
 }
