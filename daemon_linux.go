@@ -19,11 +19,6 @@ import (
 // The name of the env var that indicates what stage of daemonization we're at.
 const stageVar = "__DAEMON_STAGE"
 
-// A DaemonAttr describes the options that apply to daemonization
-type DaemonAttr struct {
-	CaptureOutput bool // whether to capture stdout/stderr
-}
-
 /*
 MakeDaemon turns the process into a daemon. But given the lack of Go's
 support for fork(), MakeDaemon() is forced to run the process all over again,
