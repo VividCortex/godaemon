@@ -7,14 +7,21 @@ package godaemon
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
-func getExecutablePath() (string, error) {
+/*
+ * This returns the absolute path to the currently running executable.
+ *
+ * It is used internally by the godaemon package.
+ * It may also be used elsewhere in the VividCortex codebase.
+ */
+func GetExecutablePath() (string, error) {
 	exePath, err := os.Readlink("/proc/self/exe")
 
 	if err != nil {
 		err = fmt.Errorf("can't read /proc/self/exe: %v", err)
 	}
 
-	return exePath, err
+	return filepath.Clean(exePath), err
 }

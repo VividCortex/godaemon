@@ -59,7 +59,7 @@ func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader) {
 	stage, advanceStage, resetEnv := getStage()
 
 	// getExecutablePath() is OS-specific.
-	procName, err := getExecutablePath()
+	procName, err := GetExecutablePath()
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)

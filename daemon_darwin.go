@@ -8,11 +8,19 @@ package godaemon
 import "C"
 
 import (
+	"bytes"
 	"fmt"
+	"path/filepath"
 	"unsafe"
 )
 
-func getExecutablePath() (string, error) {
+/*
+ * This returns the absolute path to the currently running executable.
+ *
+ * It is used internally by the godaemon package.
+ * It may also be used elsewhere in the VividCortex codebase.
+ */
+func GetExecutablePath() (string, error) {
 	PATH_MAX := 1024 // From <sys/syslimits.h>
 	exePath := make([]byte, PATH_MAX)
 	exeLen := C.uint32_t(len(exePath))
@@ -31,5 +39,9 @@ func getExecutablePath() (string, error) {
 		return "", err
 	}
 
-	return string(exePath), nil
+	// Convert from null-padded []byte to a clean string. (Can't simply cast!)
+	exePathStringLen := bytes.Index(exePath, []byte{0})
+	exePathString := string(exePath[:exePathStringLen])
+
+	return filepath.Clean(exePathString), nil
 }
