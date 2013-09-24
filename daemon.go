@@ -19,7 +19,7 @@ import (
 // The name of the env var that indicates what stage of daemonization we're at.
 const stageVar = "__DAEMON_STAGE"
 
-// A DaemonAttr describes the options that apply to daemonization
+// DaemonAttr describes the options that apply to daemonization
 type DaemonAttr struct {
 	CaptureOutput bool // whether to capture stdout/stderr
 }

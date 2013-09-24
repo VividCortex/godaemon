@@ -1,4 +1,3 @@
-// Package godaemon runs a program as a Unix daemon.
 package godaemon
 
 // Copyright (c) 2013 VividCortex, Inc. All rights reserved.
@@ -14,12 +13,9 @@ import (
 	"unsafe"
 )
 
-/*
- * This returns the absolute path to the currently running executable.
- *
- * It is used internally by the godaemon package.
- * It may also be used elsewhere in the VividCortex codebase.
- */
+// GetExecutablePath returns the absolute path to the currently running
+// executable.  It is used internally by the godaemon package, and exported
+// publicly because it's useful outside of the package too.
 func GetExecutablePath() (string, error) {
 	PATH_MAX := 1024 // From <sys/syslimits.h>
 	exePath := make([]byte, PATH_MAX)
@@ -29,14 +25,12 @@ func GetExecutablePath() (string, error) {
 		&exeLen)
 
 	if err != nil {
-		err = fmt.Errorf("_NSGetExecutablePath: %v", err)
-		return "", err
+		return "", fmt.Errorf("_NSGetExecutablePath: %v", err)
 	}
 
 	// Not sure why this might happen without err being nil, but...
 	if status != 0 {
-		err = fmt.Errorf("non-zero return from _NSGetExecutablePath")
-		return "", err
+		return "", fmt.Errorf("_NSGetExecutablePath returned %d", status)
 	}
 
 	// Convert from null-padded []byte to a clean string. (Can't simply cast!)

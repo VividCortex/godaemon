@@ -1,4 +1,3 @@
-// Package godaemon runs a program as a Unix daemon.
 package godaemon
 
 // Copyright (c) 2013 VividCortex, Inc. All rights reserved.
@@ -10,12 +9,9 @@ import (
 	"path/filepath"
 )
 
-/*
- * This returns the absolute path to the currently running executable.
- *
- * It is used internally by the godaemon package.
- * It may also be used elsewhere in the VividCortex codebase.
- */
+// GetExecutablePath returns the absolute path to the currently running
+// executable.  It is used internally by the godaemon package, and exported
+// publicly because it's useful outside of the package too.
 func GetExecutablePath() (string, error) {
 	exePath, err := os.Readlink("/proc/self/exe")
 
