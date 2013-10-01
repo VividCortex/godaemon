@@ -58,10 +58,6 @@ and reestablishes the original value for the environment variable.
 func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader) {
 	stage, advanceStage, resetEnv := getStage()
 
-	// These will be redirected to logfile if we can "fork" and want to
-	// capture output.
-	stdout, stderr := os.Stdout, os.Stderr
-
 	// getExecutablePath() is OS-specific.
 	procName, err := GetExecutablePath()
 
@@ -134,12 +130,20 @@ func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader) {
 		syscall.Umask(0)
 		resetEnv()
 
+		var stdout, stderr *os.File
 		if attrs.CaptureOutput {
 			stdout = os.NewFile(uintptr(3), "stdout")
 			stderr = os.NewFile(uintptr(4), "stderr")
 		}
+		return stdout, stderr
+	} else {
+		// This is a corner case: determining the executable path is not
+		// supported on this OS.
+		fmt.Fprintf(os.Stderr, "%v: can't determine full path to executable\n", os.Args[0])
+		os.Exit(1)
 	}
-	return stdout, stderr
+	// Should never get here.
+	return nil, nil
 }
 
 // Daemonize is equivalent to MakeDaemon(&DaemonAttr{}). It is kept only for
