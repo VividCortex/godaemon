@@ -18,13 +18,14 @@ import (
 // executable.  It is used internally by the godaemon package, and exported
 // publicly because it's useful outside of the package too.
 func GetExecutablePath() (string, error) {
-	PATH_MAX := 1024 // From <sys/syslimits.h> 
+	PATH_MAX := 1024 // From <sys/syslimits.h>
 	exePath := make([]byte, PATH_MAX)
 	exeLen := C.size_t(len(exePath))
 
 	// Beware: sizeof(int) != sizeof(C.int)
 	var mib [4]C.int
-	mib[0] = 1 // CTL_KERN
+	// From <sys/sysctl.h>
+	mib[0] = 1  // CTL_KERN
 	mib[1] = 14 // KERN_PROC
 	mib[2] = 12 // KERN_PROC_PATHNAME
 	mib[3] = -1
