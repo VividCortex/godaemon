@@ -55,95 +55,91 @@ a session leader, and then exits.
 In stage 2, the (new copy of) the program chdir's to /, then sets the umask
 and reestablishes the original value for the environment variable.
 */
-func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader) {
+func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader, error) {
 	stage, advanceStage, resetEnv := getStage()
 
 	// getExecutablePath() is OS-specific.
 	procName, err := GetExecutablePath()
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+		err = fmt.Errorf("can't determine full path to executable: %v", err)
+		return nil, nil, err
 	}
 
 	// If getExecutablePath() returns "" but no error, determinating the
 	// executable path is not implemented on the host OS, so daemonization
 	// is not supported.
-	if len(procName) > 0 {
-		if stage == 0 || stage == 1 {
-			// Descriptors 0, 1 and 2 are fixed in the "os" package. If we close
-			// them, the process may choose to open something else there, with bad
-			// consequences if some write to os.Stdout or os.Stderr follows (even
-			// from Go's library itself, through the default log package). We thus
-			// reserve these descriptors to avoid that.
-			nullDev, err := os.OpenFile("/dev/null", 0, 0)
-
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "unable to open /dev/null: ", err, "\n")
-				os.Exit(1)
-			}
-
-			files := make([]*os.File, 3, 5)
-			files[0] = nullDev // stdin
-			// FDs should not be changed; we're using literals (as opposed to
-			// constants) on purpose to discourage such a practice.
-
-			if stage == 1 && attrs.CaptureOutput {
-				files = files[0:5]
-
-				// stdout: write at fd:1, read at fd:3
-				if files[3], files[1], err = os.Pipe(); err != nil {
-					fmt.Fprintf(os.Stderr, "unable to create stdout pipe: ", err, "\n")
-					os.Exit(1)
-				}
-
-				// stderr: write at fd:2, read at fd:4
-				if files[4], files[2], err = os.Pipe(); err != nil {
-					fmt.Fprintf(os.Stderr, "unable to create stderr pipe: ", err, "\n")
-					os.Exit(1)
-				}
-			} else {
-				files[1], files[2] = nullDev, nullDev
-			}
-
-			advanceStage()
-			dir, _ := os.Getwd()
-			attrs := os.ProcAttr{Dir: dir, Env: os.Environ(), Files: files}
-
-			if stage == 0 {
-				sysattrs := syscall.SysProcAttr{Setsid: true}
-				attrs.Sys = &sysattrs
-			}
-
-			proc, err := os.StartProcess(procName, os.Args, &attrs)
-
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "can't create process %s\n", procName)
-				os.Exit(1)
-			}
-
-			proc.Release()
-			os.Exit(0)
-		}
-
-		os.Chdir("/")
-		syscall.Umask(0)
-		resetEnv()
-
-		var stdout, stderr *os.File
-		if attrs.CaptureOutput {
-			stdout = os.NewFile(uintptr(3), "stdout")
-			stderr = os.NewFile(uintptr(4), "stderr")
-		}
-		return stdout, stderr
-	} else {
-		// This is a corner case: determining the executable path is not
-		// supported on this OS.
-		fmt.Fprintf(os.Stderr, "%v: can't determine full path to executable\n", os.Args[0])
-		os.Exit(1)
+	if len(procName) == 0 {
+		err = fmt.Errorf("can't determine full path to executable")
+		return nil, nil, err
 	}
-	// Should never get here.
-	return nil, nil
+
+	if stage == 0 || stage == 1 {
+		// Descriptors 0, 1 and 2 are fixed in the "os" package. If we close
+		// them, the process may choose to open something else there, with bad
+		// consequences if some write to os.Stdout or os.Stderr follows (even
+		// from Go's library itself, through the default log package). We thus
+		// reserve these descriptors to avoid that.
+		nullDev, err := os.OpenFile("/dev/null", 0, 0)
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unable to open /dev/null: ", err, "\n")
+			os.Exit(1)
+		}
+
+		files := make([]*os.File, 3, 5)
+		files[0] = nullDev // stdin
+		// FDs should not be changed; we're using literals (as opposed to
+		// constants) on purpose to discourage such a practice.
+
+		if stage == 1 && attrs.CaptureOutput {
+			files = files[0:5]
+
+			// stdout: write at fd:1, read at fd:3
+			if files[3], files[1], err = os.Pipe(); err != nil {
+				fmt.Fprintf(os.Stderr, "unable to create stdout pipe: ", err, "\n")
+				os.Exit(1)
+			}
+
+			// stderr: write at fd:2, read at fd:4
+			if files[4], files[2], err = os.Pipe(); err != nil {
+				fmt.Fprintf(os.Stderr, "unable to create stderr pipe: ", err, "\n")
+				os.Exit(1)
+			}
+		} else {
+			files[1], files[2] = nullDev, nullDev
+		}
+
+		advanceStage()
+		dir, _ := os.Getwd()
+		attrs := os.ProcAttr{Dir: dir, Env: os.Environ(), Files: files}
+
+		if stage == 0 {
+			sysattrs := syscall.SysProcAttr{Setsid: true}
+			attrs.Sys = &sysattrs
+		}
+
+		proc, err := os.StartProcess(procName, os.Args, &attrs)
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "can't create process %s\n", procName)
+			os.Exit(1)
+		}
+
+		proc.Release()
+		os.Exit(0)
+	}
+
+	os.Chdir("/")
+	syscall.Umask(0)
+	resetEnv()
+
+	var stdout, stderr *os.File
+	if attrs.CaptureOutput {
+		stdout = os.NewFile(uintptr(3), "stdout")
+		stderr = os.NewFile(uintptr(4), "stderr")
+	}
+	return stdout, stderr, nil
 }
 
 // Daemonize is equivalent to MakeDaemon(&DaemonAttr{}). It is kept only for
