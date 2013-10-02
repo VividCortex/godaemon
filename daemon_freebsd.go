@@ -3,7 +3,8 @@ package godaemon
 // Copyright (c) 2013 VividCortex, Inc. All rights reserved.
 // Please see the LICENSE file for applicable license terms.
 
-//#include <mach-o/dyld.h>
+//#include <sys/types.h>
+//#include <sys/sysctl.h>
 import "C"
 
 import (
@@ -19,17 +20,25 @@ import (
 func GetExecutablePath() (string, error) {
 	PATH_MAX := 1024 // From <sys/syslimits.h>
 	exePath := make([]byte, PATH_MAX)
-	exeLen := C.uint32_t(len(exePath))
+	exeLen := C.size_t(len(exePath))
 
-	status, err := C._NSGetExecutablePath((*C.char)(unsafe.Pointer(&exePath[0])), &exeLen)
+	// Beware: sizeof(int) != sizeof(C.int)
+	var mib [4]C.int
+	// From <sys/sysctl.h>
+	mib[0] = 1  // CTL_KERN
+	mib[1] = 14 // KERN_PROC
+	mib[2] = 12 // KERN_PROC_PATHNAME
+	mib[3] = -1
+
+	status, err := C.sysctl((*C.int)(unsafe.Pointer(&mib[0])), 4, unsafe.Pointer(&exePath[0]), &exeLen, nil, 0)
 
 	if err != nil {
-		return "", fmt.Errorf("_NSGetExecutablePath: %v", err)
+		return "", fmt.Errorf("sysctl: %v", err)
 	}
 
 	// Not sure why this might happen with err being nil, but...
 	if status != 0 {
-		return "", fmt.Errorf("_NSGetExecutablePath returned %d", status)
+		return "", fmt.Errorf("sysctl returned %d", status)
 	}
 
 	// Convert from null-padded []byte to a clean string. (Can't simply cast!)
