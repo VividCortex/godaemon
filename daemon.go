@@ -122,7 +122,7 @@ func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader, error) {
 		proc, err := os.StartProcess(procName, os.Args, &attrs)
 
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "can't create process %s\n", procName)
+			fmt.Fprintf(os.Stderr, "can't create process %s: %v\n", procName, err)
 			os.Exit(1)
 		}
 
