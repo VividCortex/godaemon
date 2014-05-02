@@ -113,19 +113,16 @@ and reestablishes the original value for the environment variable.
 func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader, error) {
 	stage, advanceStage, resetEnv := getStage()
 
-	// getExecutablePath() is OS-specific.
-	procName, err := GetExecutablePath()
-
-	if err != nil {
-		err = fmt.Errorf("can't determine full path to executable: %v", err)
-		return nil, nil, err
-	}
-
-	// If getExecutablePath() returns "" but no error, determinating the
-	// executable path is not implemented on the host OS, so daemonization
-	// is not supported.
-	if len(procName) == 0 {
-		err = fmt.Errorf("can't determine full path to executable")
+	// This is a handy wrapper to do the proper thing in case of fatal
+	// conditions. For the first stage you may want to recover, so it will
+	// return the error. Otherwise it will exit the process, cause you'll be
+	// half-way with some descriptors already changed. There's no chance to
+	// write to stdout or stderr in the later case; they'll be already closed.
+	fatal := func(err error) (io.Reader, io.Reader, error) {
+		if stage > 0 {
+			os.Exit(1)
+		}
+		resetEnv()
 		return nil, nil, err
 	}
 
@@ -140,8 +137,7 @@ func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader, error) {
 		// reserve these descriptors to avoid that.
 		nullDev, err := os.OpenFile("/dev/null", 0, 0)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "unable to open /dev/null: %s\n", err)
-			os.Exit(1)
+			return fatal(err)
 		}
 		files[0], files[1], files[2] = nullDev, nullDev, nullDev
 
@@ -164,22 +160,35 @@ func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader, error) {
 	}
 
 	if stage < 2 {
+		// getExecutablePath() is OS-specific.
+		procName, err := GetExecutablePath()
+		if err != nil {
+			return fatal(fmt.Errorf("can't determine full path to executable: %s", err))
+		}
+
+		// If getExecutablePath() returns "" but no error, determinating the
+		// executable path is not implemented on the host OS, so daemonization
+		// is not supported.
+		if len(procName) == 0 {
+			return fatal(fmt.Errorf("can't determine full path to executable"))
+		}
+
 		if stage == 1 && attrs.CaptureOutput {
 			files = files[:fileCount+2]
 
 			// stdout: write at fd:1, read at fd:fileCount
 			if files[fileCount], files[1], err = os.Pipe(); err != nil {
-				fmt.Fprintf(os.Stderr, "unable to create stdout pipe: ", err, "\n")
-				os.Exit(1)
+				return fatal(err)
 			}
 			// stderr: write at fd:2, read at fd:fileCount+1
 			if files[fileCount+1], files[2], err = os.Pipe(); err != nil {
-				fmt.Fprintf(os.Stderr, "unable to create stderr pipe: ", err, "\n")
-				os.Exit(1)
+				return fatal(err)
 			}
 		}
 
-		advanceStage()
+		if err := advanceStage(); err != nil {
+			return fatal(err)
+		}
 		dir, _ := os.Getwd()
 		attrs := os.ProcAttr{Dir: dir, Env: os.Environ(), Files: files}
 
@@ -190,10 +199,8 @@ func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader, error) {
 
 		proc, err := os.StartProcess(procName, os.Args, &attrs)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "can't create process %s: %v\n", procName, err)
-			os.Exit(1)
+			return fatal(fmt.Errorf("can't create process %s: %s", procName, err))
 		}
-
 		proc.Release()
 		os.Exit(0)
 	}
@@ -323,7 +330,7 @@ func (s DaemonStage) String() string {
 // signature, to avoid misbehavior if it was present in the user's
 // environment. The original value is restored after the last stage, so that
 // there's no final effect on the environment the application receives.
-func getStage() (stage int, advanceStage func(), resetEnv func()) {
+func getStage() (stage int, advanceStage func() error, resetEnv func() error) {
 	var origValue string
 	stage = 0
 
@@ -351,24 +358,19 @@ func getStage() (stage int, advanceStage func(), resetEnv func()) {
 		origValue = daemonStage
 	}
 
-	advanceStage = func() {
+	advanceStage = func() error {
 		base := fmt.Sprintf("%d/%09d/", stage+1, time.Now().Nanosecond())
 		hash := sha1.New()
 		hash.Write([]byte(base))
-
 		tag := base + hex.EncodeToString(hash.Sum([]byte{}))
 
 		if err := os.Setenv(stageVar, tag+":"+origValue); err != nil {
-			fmt.Fprintf(os.Stderr, "can't set %s (stage %d)\n", stageVar, stage)
-			os.Exit(1)
+			return fmt.Errorf("can't set %s: %s", stageVar, err)
 		}
+		return nil
 	}
-
-	resetEnv = func() {
-		if err := os.Setenv(stageVar, origValue); err != nil {
-			fmt.Fprintf(os.Stderr, "can't reset %s\n", stageVar)
-			os.Exit(1)
-		}
+	resetEnv = func() error {
+		return os.Setenv(stageVar, origValue)
 	}
 
 	return stage, advanceStage, resetEnv
