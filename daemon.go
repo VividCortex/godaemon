@@ -27,6 +27,7 @@ const (
 type DaemonAttr struct {
 	CaptureOutput bool        // whether to capture stdout/stderr
 	Files         []**os.File // files to keep open in the daemon
+	NoChdir       bool        // whether to chdir to /
 }
 
 /*
@@ -205,7 +206,9 @@ func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader, error) {
 		os.Exit(0)
 	}
 
-	os.Chdir("/")
+	if !attrs.NoChdir {
+		os.Chdir("/")
+	}
 	syscall.Umask(0)
 	resetEnv()
 
