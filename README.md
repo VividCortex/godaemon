@@ -55,6 +55,51 @@ intervened in between. See the
 more details and sample code. (Note that you shouldn't use this feature to
 inherit TTY descriptors; otherwise what you get is technically not a daemon.)
 
+#### To make your daemon pid-aware
+
+* *PersistPID* : to persist PID of daemon process in a (default or path passed as param) pidfile 
+* *KillPID* : to kill PID from process' pidfile
+* *StatusPID* : to check status of PID from process' pidfile
+
+```go
+package main
+
+import (                                                                        
+  "flag"                                                                        
+  "fmt"                                          
+                                                                                
+  "github.com/ChaosCloud/godaemon"                                              
+)                                                                               
+                                                                                
+var (                                                                           
+  axn = flag.String("axn", "status", "status|start|stop")                       
+)                                                                               
+                                                                                
+func main() {                                                                   
+  godaemon.MakeDaemon(&godaemon.DaemonAttr{})                                   
+  flag.Parse()
+
+  switch *axn {                                                                 
+  case "stop":                                                                  
+    fmt.Println("Stopping...")                                                  
+    if godaemon.KillPID("") {                                                   
+      fmt.Println("Status: Stopped.")                                           
+    } else {                                                                    
+      fmt.Printf("Failed to stop. Status: ")                                    
+      godaemon.StatusPID("")                                                    
+    }                                                                           
+  case "status":                                                                
+    fmt.Printf("Status: ")                                                      
+    godaemon.StatusPID("")                                                      
+  default:                                                                      
+    if godaemon.PersistPID("") {                                                
+      // call whatever process is actually gotta run as daemon                                                         
+    }                                                                           
+  }                                                                             
+} 
+
+```
+
 
 ## Contribute
 
