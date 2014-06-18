@@ -25,6 +25,7 @@ const (
 
 // DaemonAttr describes the options that apply to daemonization
 type DaemonAttr struct {
+	ProgramName   string      // child's os.Args[0]; copied from parent if empty
 	CaptureOutput bool        // whether to capture stdout/stderr
 	Files         []**os.File // files to keep open in the daemon
 }
@@ -190,14 +191,19 @@ func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader, error) {
 			return fatal(err)
 		}
 		dir, _ := os.Getwd()
-		attrs := os.ProcAttr{Dir: dir, Env: os.Environ(), Files: files}
+		osAttrs := os.ProcAttr{Dir: dir, Env: os.Environ(), Files: files}
 
 		if stage == 0 {
 			sysattrs := syscall.SysProcAttr{Setsid: true}
-			attrs.Sys = &sysattrs
+			osAttrs.Sys = &sysattrs
 		}
 
-		proc, err := os.StartProcess(procName, os.Args, &attrs)
+		progName := attrs.ProgramName
+		if len(progName) == 0 {
+			progName = os.Args[0]
+		}
+		args := append([]string{progName}, os.Args[1:]...)
+		proc, err := os.StartProcess(procName, args, &osAttrs)
 		if err != nil {
 			return fatal(fmt.Errorf("can't create process %s: %s", procName, err))
 		}
@@ -278,9 +284,10 @@ func Daemonize(child ...bool) {
 	MakeDaemon(&DaemonAttr{})
 }
 
-// This tells in what stage in the process we are. See Stage().
+// DaemonStage tells in what stage in the process we are. See Stage().
 type DaemonStage int
 
+// Stages in the daemonizing process.
 const (
 	StageParent = DaemonStage(iota) // Original process
 	StageChild                      // MakeDaemon() called once: first child
