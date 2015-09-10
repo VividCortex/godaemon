@@ -1,7 +1,9 @@
+// +build darwin freebsd linux
+
 // Package godaemon runs a program as a Unix daemon.
 package godaemon
 
-// Copyright (c) 2013 VividCortex, Inc. All rights reserved.
+// Copyright (c) 2013-2015 VividCortex, Inc. All rights reserved.
 // Please see the LICENSE file for applicable license terms.
 
 import (
