@@ -163,13 +163,12 @@ func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader, error) {
 	}
 
 	if stage < 2 {
-		// getExecutablePath() is OS-specific.
-		procName, err := GetExecutablePath()
+		procName, err := os.Executable()
 		if err != nil {
 			return fatal(fmt.Errorf("can't determine full path to executable: %s", err))
 		}
 
-		// If getExecutablePath() returns "" but no error, determinating the
+		// If Executable() returns "" but no error, determinating the
 		// executable path is not implemented on the host OS, so daemonization
 		// is not supported.
 		if len(procName) == 0 {
