@@ -26,7 +26,7 @@ func Readlink(name string) (string, error) {
 		b := make([]byte, len)
 		n, e := syscall.Readlink(name, b)
 		if e != nil {
-			return "", &os.PathError{"readlink", name, e}
+			return "", &os.PathError{Op: "readlink", Path: name, Err: e}
 		}
 		if n < len {
 			if z := bytes.IndexByte(b[:n], 0); z >= 0 {

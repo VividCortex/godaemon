@@ -1,0 +1,39 @@
+name: build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - go: 1.15
+            build-with: true
+    continue-on-error: ${{ matrix.build-with == false }}
+    name: Build with ${{ matrix.go }}
+    defaults:
+      run:
+        working-directory: src/github.com/${{ github.repository }}
+    env:
+      GOPATH: ${{ github.workspace }}
+
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        path: src/github.com/${{ github.repository }}
+
+    - name: Vet
+      run: |
+        go vet ./...
