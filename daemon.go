@@ -30,6 +30,7 @@ type DaemonAttr struct {
 	ProgramName   string      // child's os.Args[0]; copied from parent if empty
 	CaptureOutput bool        // whether to capture stdout/stderr
 	Files         []**os.File // files to keep open in the daemon
+	OnExit        func(stage int) error
 }
 
 /*
@@ -209,6 +210,9 @@ func MakeDaemon(attrs *DaemonAttr) (io.Reader, io.Reader, error) {
 			return fatal(fmt.Errorf("can't create process %s: %s", procName, err))
 		}
 		proc.Release()
+		if attrs.OnExit != nil {
+			attrs.OnExit(stage)
+		}
 		os.Exit(0)
 	}
 
